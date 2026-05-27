@@ -11,7 +11,7 @@ const io = new Server(server);
 const DATA_FILE = path.join(__dirname, 'data.json');
 
 // load or init data
-let data = { status: { started: false }, results: [] };
+let data = { started: false, answers: {}, results: [] };
 try {
   if (fs.existsSync(DATA_FILE)) {
     data = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')) || data;
@@ -35,14 +35,14 @@ app.use(express.static(path.join(__dirname, '..'))); // serve project root so in
 
 // status endpoints
 app.get('/api/status', (req, res) => {
-  res.json(data.status);
+  res.json({ started: data.started });
 });
 app.post('/api/status', (req, res) => {
   const { started } = req.body;
-  data.status.started = !!started;
+  data.started = !!started;
   saveData();
-  io.emit('status', data.status);
-  res.json({ ok: true, status: data.status });
+  io.emit('quiz-started');
+  res.json({ ok: true, started: data.started });
 });
 
 // results endpoints
@@ -70,24 +70,57 @@ app.post('/api/reset-results', (req, res) => {
 // socket handlers for real-time
 io.on('connection', socket => {
   console.log('socket connected', socket.id);
-  // send current status and results
-  socket.emit('status', data.status);
-  socket.emit('all-results', data.results);
+  // send current state to new client
+  socket.emit('quiz-state', { started: data.started, answers: data.answers, results: data.results });
 
-  socket.on('set-status', (s) => {
-    data.status.started = !!s.started;
+  socket.on('get-state', (_, callback) => {
+    if (typeof callback === 'function') {
+      callback({ started: data.started, answers: data.answers, results: data.results });
+    }
+  });
+
+  socket.on('host-login', () => {
+    console.log('Host logged in', socket.id);
+  });
+
+  socket.on('start-quiz', () => {
+    data.started = true;
     saveData();
-    io.emit('status', data.status);
+    io.emit('quiz-started');
+  });
+
+  socket.on('stop-quiz', () => {
+    data.started = false;
+    saveData();
+    io.emit('quiz-stopped');
+  });
+
+  socket.on('set-answer', (msg) => {
+    const { qIdx, ansIdx } = msg;
+    if (qIdx !== undefined && ansIdx !== undefined) {
+      data.answers[qIdx] = ansIdx;
+      saveData();
+      io.emit('answer-set', { qIdx, ansIdx });
+    }
   });
 
   socket.on('submit-result', (rec) => {
-    data.results.push(rec);
+    if (rec && typeof rec === 'object') {
+      data.results.push(rec);
+      saveData();
+      io.emit('new-result', rec);
+    }
+  });
+
+  socket.on('reset-all', () => {
+    data.answers = {};
+    data.results = [];
     saveData();
-    io.emit('new-result', rec);
+    io.emit('all-reset');
   });
 
   socket.on('disconnect', () => {
-    // nothing for now
+    console.log('socket disconnected', socket.id);
   });
 });
 

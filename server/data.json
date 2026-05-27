@@ -1,4 +1,7 @@
 {
-  "status": { "started": false },
-  "results": []
+  "status": {
+    "started": false
+  },
+  "results": [],
+  "started": true
 }

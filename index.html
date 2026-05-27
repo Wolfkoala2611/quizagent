@@ -387,6 +387,29 @@
         adminStopBtn.addEventListener('click', ()=>{ saveStatus(false); adminStatusEl.textContent='Not started'; alert('Quiz stopped — new submissions will be prevented.'); });
         adminResetBtn.addEventListener('click', ()=>{ if(!confirm('Reset all saved results?')) return; localStorage.removeItem(LS_RESULTS); renderResults(); alert('Results cleared.'); });
 
+        // Listen for localStorage changes from other tabs (same origin) so users are notified when admin starts/stops the quiz.
+        // Note: this works across tabs in the same browser/origin. It does NOT sync across different devices/browsers — for that you need a server.
+        window.addEventListener('storage', (e) => {
+            if(e.key === LS_STATUS){
+                const started = loadStatus();
+                adminStatusEl.textContent = started ? 'Started' : 'Not started';
+                // If a user is logged in and the quiz was just started, move them to quiz screen automatically
+                if(!loggedIn) return;
+                if(role !== 'admin'){
+                    if(started){
+                        // If user is already on quiz screen we don't need to switch
+                        if(!document.getElementById('screen-quiz').classList.contains('active')){
+                            alert('Admin started the quiz — it will begin now.');
+                            switchScreen('screen-quiz'); currentQuestionIndex = 0; score = 0; loadQuestion();
+                        }
+                    } else {
+                        // Admin stopped quiz
+                        alert('Admin stopped the quiz. New submissions will be prevented.');
+                    }
+                }
+            }
+        });
+
         // Chart utilities: populate question selector
         const chartQuestionSelect = document.getElementById('chart-question-select');
         function populateQuestionSelect(){ chartQuestionSelect.innerHTML = ''; quizData.forEach((q,idx)=>{ const opt = document.createElement('option'); opt.value = idx; opt.textContent = `${idx+1}. ${q.question.substring(0,60)}${q.question.length>60? '...' : ''}`; chartQuestionSelect.appendChild(opt); }); }

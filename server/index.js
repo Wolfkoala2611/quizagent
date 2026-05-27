@@ -33,6 +33,11 @@ function saveData() {
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '..'))); // serve project root so index.html works
 
+// Root route - redirect to admin page
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'admin.html'));
+});
+
 // status endpoints
 app.get('/api/status', (req, res) => {
   res.json({ started: data.started });

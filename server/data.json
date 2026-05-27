@@ -1,7 +1,5 @@
 {
-  "status": {
-    "started": false
-  },
-  "results": [],
-  "started": true
+  "started": false,
+  "answers": {},
+  "results": []
 }

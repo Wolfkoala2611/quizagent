@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuizAgent - User Quiz</title>
+    <style>
+        :root {
+            --bg: #f7fafc;
+            --card: #fff;
+            --accent: #2563eb;
+            --muted: #6b7280;
+            --correct: #10b981;
+            --wrong: #ef4444;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        body { background: linear-gradient(135deg, #e0f2fe 0%, var(--bg) 100%); display: flex; align-items: center; justify-content: center; padding: 20px; min-height: 100vh; }
+        .container { width: 100%; max-width: 900px; background: var(--card); border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); padding: 30px; }
+        h1 { font-size: 24px; margin-bottom: 8px; color: #0f172a; }
+        .subtitle { font-size: 14px; color: var(--muted); margin-bottom: 20px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+        @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
+        .section { display: none; }
+        .section.active { display: block; }
+        label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--muted); }
+        input, select { width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 14px; font-family: inherit; margin-bottom: 12px; }
+        button { padding: 10px 16px; background: var(--accent); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; }
+        button:hover { background: #1d4ed8; }
+        button.secondary { background: #e5e7eb; color: #0f172a; }
+        .info-box { background: #f3f4f6; border-left: 4px solid var(--accent); padding: 12px; border-radius: 6px; margin: 12px 0; font-size: 13px; color: #374151; }
+        .waiting { background: #fef3c7; border-left: 4px solid #f59e0b; color: #92400e; }
+        .ready { background: #d1fae5; border-left: 4px solid var(--correct); color: var(--correct); }
+        h2 { font-size: 18px; margin-bottom: 12px; }
+        h3 { font-size: 16px; margin-bottom: 12px; margin-top: 16px; }
+        .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        a { color: var(--accent); text-decoration: none; font-size: 12px; }
+        a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="top-bar">
+            <div>
+                <h1>📝 QuizAgent User</h1>
+                <p class="subtitle">Join and take the quiz</p>
+            </div>
+            <div><a href="admin.html">→ Admin Page</a></div>
+        </div>
+
+        <!-- LOGIN SCREEN -->
+        <div id="user-login-screen" class="section active">
+            <div style="max-width: 500px; margin: 40px auto;">
+                <h2>👥 Join Quiz</h2>
+                <p style="font-size: 13px; color: var(--muted); margin-bottom: 16px;">Enter your team and leader name to participate</p>
+                <label>Team Name</label>
+                <input id="user-team" type="text" placeholder="e.g. Team Alpha" />
+                <label>Leader Name</label>
+                <input id="user-leader" type="text" placeholder="e.g. John Doe" />
+                <button onclick="userLogin()" style="width: 100%; margin-top: 12px;">Join Quiz</button>
+                <div id="user-status-box" class="info-box waiting" style="display: none; margin-top: 16px;"></div>
+            </div>
+        </div>
+
+        <!-- QUIZ SCREEN -->
+        <div id="user-quiz-screen" class="section">
+            <div class="top-bar">
+                <h2>Quiz | Team: <span id="user-team-display"></span></h2>
+                <button class="secondary" onclick="userLogout()">Exit Quiz</button>
+            </div>
+            <div class="grid">
+                <div>
+                    <h3 id="user-question-text">Q1</h3>
+                    <div id="user-options" style="display: flex; flex-direction: column; gap: 8px; margin: 16px 0;"></div>
+                    <div style="margin-top: 16px; display: flex; gap: 8px;">
+                        <button id="user-prev-btn" onclick="userPrevQuestion()" class="secondary" style="flex: 1;">← Prev</button>
+                        <button id="user-next-btn" onclick="userNextQuestion()" class="secondary" style="flex: 1;">Next →</button>
+                        <button id="user-submit-btn" onclick="userSubmitQuiz()" style="flex: 1;">✓ Submit</button>
+                    </div>
+                </div>
+                <div>
+                    <h3>Progress</h3>
+                    <p style="margin-bottom: 12px;">Question <span id="user-current-q">1</span>/10</p>
+                    <div id="user-questions-nav" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px;"></div>
+                    <h3 style="margin-top: 20px;">Answered</h3>
+                    <p id="user-answered-count" style="font-size: 14px; color: var(--correct); font-weight: 600;">0/10</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- RESULT SCREEN -->
+        <div id="user-result-screen" class="section">
+            <h2 style="text-align: center; margin-top: 40px;">✓ Submitted Successfully</h2>
+            <p style="text-align: center; color: var(--muted); margin: 12px 0 40px 0;">Your answers have been recorded and sent to the admin</p>
+            <div style="text-align: center;">
+                <button onclick="userLogout()" style="width: 200px;">Back to Login</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const QUESTIONS = [
+            { text: 'What is 2 + 2?', opts: ['3', '4', '5', '6'] },
+            { text: 'What is the capital of France?', opts: ['Berlin', 'Paris', 'Rome', 'Madrid'] },
+            { text: 'Which planet is closest to the Sun?', opts: ['Venus', 'Mercury', 'Earth', 'Mars'] },
+            { text: 'Who wrote Romeo and Juliet?', opts: ['Marlowe', 'Shakespeare', 'Jonson', 'Wilde'] },
+            { text: 'What is 10 × 5?', opts: ['40', '45', '50', '55'] },
+            { text: 'What is the largest ocean?', opts: ['Atlantic', 'Indian', 'Arctic', 'Pacific'] },
+            { text: 'Which element has symbol Au?', opts: ['Silver', 'Aluminum', 'Gold', 'Argon'] },
+            { text: 'What is the boiling point of water?', opts: ['90°C', '100°C', '110°C', '120°C'] },
+            { text: 'How many continents are there?', opts: ['5', '6', '7', '8'] },
+            { text: 'What is the smallest prime number?', opts: ['0', '1', '2', '3'] }
+        ];
+
+        let socket = null;
+        let quizState = { started: false };
+        let currentUser = null;
+        let userAnswers = {};
+        let userCurrentQ = 0;
+
+        try {
+            socket = io();
+            socket.on('connect', () => {
+                console.log('✅ Connected to server');
+                updateUserLoginStatus();
+            });
+
+            socket.on('quiz-started', () => {
+                quizState.started = true;
+                updateUserLoginStatus();
+            });
+
+            socket.on('quiz-stopped', () => {
+                quizState.started = false;
+                updateUserLoginStatus();
+            });
+        } catch (e) {
+            console.log('⚠️ Socket unavailable');
+        }
+
+        function show(id) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+        }
+
+        function updateUserLoginStatus() {
+            const statusBox = document.getElementById('user-status-box');
+            if (quizState.started) {
+                statusBox.innerHTML = '✅ Quiz started! You can join now.';
+                statusBox.className = 'info-box ready';
+            } else {
+                statusBox.innerHTML = '⏳ Waiting for admin to start the quiz...';
+                statusBox.className = 'info-box waiting';
+            }
+            statusBox.style.display = 'block';
+        }
+
+        function userLogin() {
+            const team = document.getElementById('user-team').value.trim();
+            const leader = document.getElementById('user-leader').value.trim();
+            
+            if (!team || !leader) {
+                alert('❌ Enter both team name and leader name');
+                return;
+            }
+
+            if (!quizState.started) {
+                alert('⏳ Admin has not started the quiz yet. Please wait.');
+                return;
+            }
+
+            currentUser = { team, leader };
+            userAnswers = {};
+            for (let i = 0; i < QUESTIONS.length; i++) userAnswers[i] = null;
+            userCurrentQ = 0;
+
+            document.getElementById('user-team-display').textContent = team;
+            show('user-quiz-screen');
+            renderUserQuestion();
+            renderUserNav();
+        }
+
+        function userLogout() {
+            currentUser = null;
+            document.getElementById('user-team').value = '';
+            document.getElementById('user-leader').value = '';
+            show('user-login-screen');
+        }
+
+        function renderUserQuestion() {
+            const q = QUESTIONS[userCurrentQ];
+            document.getElementById('user-question-text').textContent = `${userCurrentQ+1}. ${q.text}`;
+            document.getElementById('user-current-q').textContent = userCurrentQ + 1;
+            
+            const opDiv = document.getElementById('user-options');
+            opDiv.innerHTML = '';
+            q.opts.forEach((opt, i) => {
+                const label = document.createElement('label');
+                label.style.display = 'flex';
+                label.style.alignItems = 'center';
+                label.style.padding = '10px';
+                label.style.border = userAnswers[userCurrentQ] === i ? '2px solid var(--accent)' : '1px solid #e5e7eb';
+                label.style.borderRadius = '8px';
+                label.style.cursor = 'pointer';
+                label.style.marginBottom = '0';
+                label.innerHTML = `<input type="radio" name="q" value="${i}" ${userAnswers[userCurrentQ] === i ? 'checked' : ''} onchange="userAnswers[${userCurrentQ}]=${i};renderUserNav()" style="margin-right: 8px;" /> ${String.fromCharCode(65+i)}. ${opt}`;
+                opDiv.appendChild(label);
+            });
+
+            document.getElementById('user-prev-btn').disabled = userCurrentQ === 0;
+            document.getElementById('user-next-btn').disabled = userCurrentQ === QUESTIONS.length - 1;
+        }
+
+        function userPrevQuestion() {
+            if (userCurrentQ > 0) {
+                userCurrentQ--;
+                renderUserQuestion();
+            }
+        }
+
+        function userNextQuestion() {
+            if (userCurrentQ < QUESTIONS.length - 1) {
+                userCurrentQ++;
+                renderUserQuestion();
+            }
+        }
+
+        function renderUserNav() {
+            const nav = document.getElementById('user-questions-nav');
+            nav.innerHTML = '';
+            let answeredCount = 0;
+            for (let i = 0; i < QUESTIONS.length; i++) {
+                const btn = document.createElement('button');
+                btn.textContent = i+1;
+                btn.style.marginBottom = '0';
+                if (userAnswers[i] === null) {
+                    btn.style.background = '#e5e7eb';
+                    btn.style.color = '#0f172a';
+                } else {
+                    btn.style.background = 'var(--accent)';
+                    btn.style.color = 'white';
+                    answeredCount++;
+                }
+                btn.onclick = () => { userCurrentQ = i; renderUserQuestion(); };
+                nav.appendChild(btn);
+            }
+            document.getElementById('user-answered-count').textContent = answeredCount + '/10';
+        }
+
+        function userSubmitQuiz() {
+            const answered = Object.values(userAnswers).filter(a => a !== null).length;
+            if (answered < 10 && !confirm(`⚠️ You only answered ${answered}/10 questions. Submit anyway?`)) {
+                return;
+            }
+
+            if (!confirm('✓ Submit your answers?')) return;
+
+            const rec = { team: currentUser.team, leader: currentUser.leader, answers: userAnswers, time: Date.now() };
+            if (socket) {
+                socket.emit('submit-result', rec);
+            }
+
+            show('user-result-screen');
+        }
+
+        // Check quiz status on load
+        window.addEventListener('load', () => {
+            if (socket) {
+                socket.emit('get-state', {}, (state) => {
+                    if (state) {
+                        quizState.started = state.started;
+                        updateUserLoginStatus();
+                    }
+                });
+            }
+        });
+
+        // Periodically check quiz status
+        setInterval(() => {
+            if (socket && !currentUser) {
+                socket.emit('get-state', {}, (state) => {
+                    if (state) {
+                        quizState.started = state.started;
+                        updateUserLoginStatus();
+                    }
+                });
+            }
+        }, 2000);
+    </script>
+</body>
+</html>

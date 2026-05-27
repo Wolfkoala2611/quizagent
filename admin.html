@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuizAgent - Admin Dashboard</title>
+    <style>
+        :root {
+            --bg: #f7fafc;
+            --card: #fff;
+            --accent: #2563eb;
+            --muted: #6b7280;
+            --correct: #10b981;
+            --wrong: #ef4444;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        body { background: linear-gradient(135deg, #e0f2fe 0%, var(--bg) 100%); display: flex; align-items: center; justify-content: center; padding: 20px; min-height: 100vh; }
+        .container { width: 100%; max-width: 1000px; background: var(--card); border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); padding: 30px; }
+        h1 { font-size: 28px; margin-bottom: 8px; color: #0f172a; }
+        .subtitle { font-size: 14px; color: var(--muted); margin-bottom: 20px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+        @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+        .section { display: none; }
+        .section.active { display: block; }
+        label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--muted); }
+        input, select { width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 14px; font-family: inherit; margin-bottom: 12px; }
+        button { padding: 10px 16px; background: var(--accent); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; }
+        button:hover { background: #1d4ed8; }
+        button.secondary { background: #e5e7eb; color: #0f172a; }
+        button.danger { background: var(--wrong); }
+        .info-box { background: #f3f4f6; border-left: 4px solid var(--accent); padding: 12px; border-radius: 6px; margin: 12px 0; font-size: 13px; color: #374151; }
+        .status-badge { display: inline-block; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+        .status-running { background: #d1fae5; color: var(--correct); }
+        .status-stopped { background: #fee2e2; color: var(--wrong); }
+        .question-item { background: #f9fafb; padding: 12px; border-radius: 8px; margin-bottom: 8px; border-left: 3px solid #e5e7eb; }
+        .question-answer { font-size: 12px; color: var(--correct); font-weight: 600; margin-top: 4px; }
+        .results-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .results-table th, .results-table td { padding: 8px; text-align: left; border-bottom: 1px solid #e5e7eb; }
+        .results-table th { background: #f3f4f6; font-weight: 600; }
+        .chart-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+        .chart-label { width: 30px; font-weight: 600; }
+        .chart-fill { flex: 1; background: #e5e7eb; border-radius: 4px; height: 20px; overflow: hidden; }
+        .chart-inner { background: linear-gradient(90deg, var(--accent), #4f46e5); height: 100%; }
+        .chart-count { width: 50px; text-align: right; font-size: 12px; font-weight: 600; }
+        h2 { font-size: 18px; margin-bottom: 12px; }
+        h3 { font-size: 16px; margin-bottom: 12px; margin-top: 16px; }
+        .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        a { color: var(--accent); text-decoration: none; font-size: 12px; }
+        a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="top-bar">
+            <div>
+                <h1>🎯 QuizAgent Admin</h1>
+                <p class="subtitle">Host-controlled team quiz dashboard</p>
+            </div>
+            <div><a href="user.html">→ Open User Page</a></div>
+        </div>
+
+        <!-- LOGIN SCREEN -->
+        <div id="login-screen" class="section active">
+            <div style="max-width: 400px; margin: 40px auto;">
+                <h2>🔐 Admin Login</h2>
+                <p style="font-size: 13px; color: var(--muted); margin-bottom: 16px;">Enter admin password to manage quiz</p>
+                <label>Password</label>
+                <input id="admin-password" type="password" placeholder="Enter password" />
+                <button onclick="adminLogin()" style="width: 100%; margin-top: 12px;">Login</button>
+                <div class="info-box">Demo: <strong>admin123</strong></div>
+            </div>
+        </div>
+
+        <!-- ADMIN DASHBOARD -->
+        <div id="admin-screen" class="section">
+            <div class="top-bar">
+                <h2>Admin Dashboard</h2>
+                <div>Status: <span id="admin-quiz-status" class="status-badge status-stopped">Not Started</span> <button class="secondary" onclick="adminLogout()" style="margin-left: 12px;">Logout</button></div>
+            </div>
+            <div class="grid">
+                <div>
+                    <h3>Control</h3>
+                    <button id="admin-start-btn" onclick="adminStartQuiz()" style="width: 100%; margin-bottom: 8px;">▶️ Start Quiz</button>
+                    <button id="admin-stop-btn" class="secondary" onclick="adminStopQuiz()" style="width: 100%; display: none;">⏸️ Stop Quiz</button>
+                    <button class="danger" onclick="adminResetAll()" style="width: 100%; margin-top: 8px;">🔄 Reset All</button>
+                    <h3 style="margin-top: 20px;">Set Correct Answers</h3>
+                    <div id="admin-questions" style="max-height: 450px; overflow-y: auto;"></div>
+                </div>
+                <div>
+                    <h3>Live Results</h3>
+                    <div id="admin-current-chart" style="margin-bottom: 20px; background: #f9fafb; padding: 12px; border-radius: 8px;"></div>
+                    <h3>User Submissions</h3>
+                    <div id="admin-results" style="max-height: 400px; overflow-y: auto; font-size: 12px;"><p style="color: var(--muted);">Waiting for submissions...</p></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const QUESTIONS = [
+            { text: 'What is 2 + 2?', opts: ['3', '4', '5', '6'] },
+            { text: 'What is the capital of France?', opts: ['Berlin', 'Paris', 'Rome', 'Madrid'] },
+            { text: 'Which planet is closest to the Sun?', opts: ['Venus', 'Mercury', 'Earth', 'Mars'] },
+            { text: 'Who wrote Romeo and Juliet?', opts: ['Marlowe', 'Shakespeare', 'Jonson', 'Wilde'] },
+            { text: 'What is 10 × 5?', opts: ['40', '45', '50', '55'] },
+            { text: 'What is the largest ocean?', opts: ['Atlantic', 'Indian', 'Arctic', 'Pacific'] },
+            { text: 'Which element has symbol Au?', opts: ['Silver', 'Aluminum', 'Gold', 'Argon'] },
+            { text: 'What is the boiling point of water?', opts: ['90°C', '100°C', '110°C', '120°C'] },
+            { text: 'How many continents are there?', opts: ['5', '6', '7', '8'] },
+            { text: 'What is the smallest prime number?', opts: ['0', '1', '2', '3'] }
+        ];
+
+        const ADMIN_PASSWORD = 'admin123';
+        let socket = null;
+        let quizState = { started: false, answers: {}, results: [] };
+        let isAdmin = false;
+
+        try {
+            socket = io();
+            socket.on('connect', () => {
+                console.log('✅ Connected to server');
+                socket.emit('get-state', {}, (state) => {
+                    if (state) {
+                        quizState = state;
+                        if (isAdmin) updateAdminUI();
+                    }
+                });
+            });
+
+            socket.on('quiz-started', () => {
+                quizState.started = true;
+                if (isAdmin) updateAdminUI();
+            });
+
+            socket.on('quiz-stopped', () => {
+                quizState.started = false;
+                if (isAdmin) updateAdminUI();
+            });
+
+            socket.on('answer-set', (data) => {
+                quizState.answers[data.qIdx] = data.ansIdx;
+                if (isAdmin) updateAdminUI();
+            });
+
+            socket.on('new-result', (rec) => {
+                quizState.results.push(rec);
+                if (isAdmin) renderAdminResults();
+            });
+
+            socket.on('all-reset', () => {
+                quizState = { started: quizState.started, answers: {}, results: [] };
+                if (isAdmin) updateAdminUI();
+            });
+        } catch (e) {
+            console.log('⚠️ Socket unavailable - running offline');
+        }
+
+        function show(id) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+        }
+
+        function adminLogin() {
+            if (document.getElementById('admin-password').value !== ADMIN_PASSWORD) {
+                alert('❌ Wrong password');
+                return;
+            }
+            isAdmin = true;
+            if (socket) socket.emit('admin-login');
+            show('admin-screen');
+            updateAdminUI();
+        }
+
+        function adminLogout() {
+            isAdmin = false;
+            document.getElementById('admin-password').value = '';
+            show('login-screen');
+        }
+
+        function adminStartQuiz() {
+            quizState.started = true;
+            if (socket) socket.emit('start-quiz');
+            updateAdminUI();
+        }
+
+        function adminStopQuiz() {
+            quizState.started = false;
+            if (socket) socket.emit('stop-quiz');
+            updateAdminUI();
+        }
+
+        function adminResetAll() {
+            if (!confirm('⚠️ Reset all submissions and answers?')) return;
+            quizState = { started: false, answers: {}, results: [] };
+            if (socket) socket.emit('reset-all');
+            updateAdminUI();
+        }
+
+        function adminSetAnswer(qIdx, val) {
+            quizState.answers[qIdx] = val === '' ? undefined : parseInt(val);
+            if (socket) socket.emit('set-answer', { qIdx, ansIdx: quizState.answers[qIdx] });
+            updateAdminUI();
+        }
+
+        function updateAdminUI() {
+            const st = document.getElementById('admin-quiz-status');
+            if (quizState.started) {
+                st.textContent = '✅ Running';
+                st.className = 'status-badge status-running';
+                document.getElementById('admin-start-btn').style.display = 'none';
+                document.getElementById('admin-stop-btn').style.display = 'block';
+            } else {
+                st.textContent = '⏹️ Not Started';
+                st.className = 'status-badge status-stopped';
+                document.getElementById('admin-start-btn').style.display = 'block';
+                document.getElementById('admin-stop-btn').style.display = 'none';
+            }
+
+            const qDiv = document.getElementById('admin-questions');
+            qDiv.innerHTML = '';
+            QUESTIONS.forEach((q, i) => {
+                const div = document.createElement('div');
+                div.className = 'question-item';
+                const ans = quizState.answers[i];
+                div.innerHTML = `<strong>${i+1}. ${q.text}</strong><br><select onchange="adminSetAnswer(${i}, this.value)" style="margin-top: 6px;">
+                    <option value="">-- Select Answer --</option>
+                    ${q.opts.map((o, j) => `<option value="${j}" ${ans === j ? 'selected' : ''}>${String.fromCharCode(65+j)}. ${o}</option>`).join('')}
+                </select>`;
+                if (ans !== undefined) div.innerHTML += `<div class="question-answer">✓ Correct: ${q.opts[ans]}</div>`;
+                qDiv.appendChild(div);
+            });
+
+            renderAdminChart();
+            renderAdminResults();
+        }
+
+        function renderAdminChart() {
+            let q_idx = 0;
+            if (Object.keys(quizState.answers).length) q_idx = Math.min(...Object.keys(quizState.answers).map(Number));
+            const q = QUESTIONS[q_idx];
+            const counts = [0,0,0,0];
+            quizState.results.forEach(r => {
+                if (r.answers && r.answers[q_idx] !== undefined) counts[r.answers[q_idx]]++;
+            });
+            const total = counts.reduce((a,b)=>a+b,0);
+            const max = Math.max(...counts, 1);
+            let html = `<strong>Q${q_idx+1}: ${q.text}</strong><br><br>`;
+            counts.forEach((c, i) => {
+                const w = (c/max)*100;
+                const mark = quizState.answers[q_idx] === i ? ' ✓' : '';
+                html += `<div class="chart-bar"><div class="chart-label">${String.fromCharCode(65+i)}${mark}</div><div class="chart-fill"><div class="chart-inner" style="width:${w}%"></div></div><div class="chart-count">${c}/${total}</div></div>`;
+            });
+            document.getElementById('admin-current-chart').innerHTML = html;
+        }
+
+        function renderAdminResults() {
+            const div = document.getElementById('admin-results');
+            if (!quizState.results.length) {
+                div.innerHTML = '<p style="color: var(--muted);">⏳ Waiting for submissions...</p>';
+                return;
+            }
+            let html = `<p style="margin-bottom: 8px;"><strong>${quizState.results.length} submission(s)</strong></p>
+                        <table class="results-table"><tr><th>Team</th><th>Leader</th><th>Submitted</th></tr>`;
+            quizState.results.slice().reverse().forEach(r => {
+                html += `<tr><td>${r.team}</td><td>${r.leader}</td><td>${new Date(r.time).toLocaleTimeString()}</td></tr>`;
+            });
+            html += '</table>';
+            div.innerHTML = html;
+        }
+
+        // Load initial state
+        window.addEventListener('load', () => {
+            if (socket) {
+                socket.emit('get-state', {}, (state) => {
+                    if (state) quizState = state;
+                });
+            }
+        });
+    </script>
+</body>
+</html>

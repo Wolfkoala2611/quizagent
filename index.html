@@ -560,5 +560,84 @@
             }
         }
     </script>
+    <!-- Socket.IO client (served by server) -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        // Attempt to connect to server socket for cross-device sync. If unavailable, app continues using localStorage.
+        let socket = null;
+        try{
+            socket = io();
+            socket.on('connect', ()=>{ console.log('Connected to server socket', socket.id); });
+
+            socket.on('status', s => { // server broadcast of status
+                const started = !!s.started;
+                adminStatusEl.textContent = started ? 'Started' : 'Not started';
+                // If a logged-in user (non-admin) and quiz started, move to quiz
+                if(loggedIn && role !== 'admin'){
+                    if(started && !document.getElementById('screen-quiz').classList.contains('active')){
+                        alert('Admin started the quiz — it will begin now.');
+                        switchScreen('screen-quiz'); currentQuestionIndex = 0; score = 0; loadQuestion();
+                    }
+                }
+            });
+
+            socket.on('new-result', rec => { // append new result
+                // keep results in UI
+                renderResults();
+            });
+
+            socket.on('all-results', arr => { // initial full results
+                // replace local rendering by requesting results from server
+                // store server results in localStorage for consistency UI-wise
+                try{ localStorage.setItem(LS_RESULTS, JSON.stringify(arr)); }catch(e){}
+                renderResults();
+            });
+
+            socket.on('results-reset', ()=>{ try{ localStorage.removeItem(LS_RESULTS); }catch(e){}; renderResults(); });
+
+        }catch(e){ console.log('Socket connect failed, continuing with local-only mode', e); socket = null; }
+
+        // If admin uses adminStartBtn/adminStopBtn, prefer server emit when socket available
+        const originalAdminStart = adminStartBtn.onclick;
+        adminStartBtn.addEventListener('click', ()=>{
+            if(socket){ socket.emit('set-status', { started: true }); alert('Quiz started (server) — users will be notified.'); }
+            else { saveStatus(true); adminStatusEl.textContent='Started'; alert('Quiz started — users on this browser will be able to take the quiz.'); }
+        });
+        adminStopBtn.addEventListener('click', ()=>{
+            if(socket){ socket.emit('set-status', { started: false }); alert('Quiz stopped (server).'); }
+            else { saveStatus(false); adminStatusEl.textContent='Not started'; alert('Quiz stopped.'); }
+        });
+
+        // When submitting results, prefer server submit
+        const origEndQuiz = endQuiz;
+        function submitResultToServer(record){
+            if(socket){ socket.emit('submit-result', record); }
+            else { addResult(record); renderResults(); }
+        }
+
+        // Replace addResult calls in endQuiz path: override endQuiz to call server
+        // We will monkey-patch endQuiz's result-saving by overriding submit path in endQuiz after it's computed.
+        // To keep changes minimal, update the endQuiz function to call submitResultToServer when saving results.
+        // (We will not re-define the whole endQuiz here because it's already defined; we will instead wrap existing behavior by
+        // intercepting renderResults() earlier updates — the current implementation saves to localStorage only in endQuiz.
+        // So patching is minimal: when socket exists we also post to server endpoint as fallback.)
+        
+        // Also provide fetch-based API fallback for non-socket server environments
+        async function postResultToApi(record){
+            try{
+                const res = await fetch('/api/results', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(record) });
+                return res.ok;
+            }catch(e){ return false; }
+        }
+
+        // Intercept endQuiz's final save by listening to 'new-result' or by wrapping addResult in the client: when endQuiz calls addResult,
+        // we'll also try to post to server if available. So override addResult to forward to server as well.
+        const clientAddResult = addResult;
+        addResult = function(rec){
+            clientAddResult(rec); // local store
+            if(socket){ socket.emit('submit-result', rec); }
+            else { /* try API fallback */ postResultToApi(rec).catch(()=>{}); }
+        };
+    </script>
 </body>
 </html>

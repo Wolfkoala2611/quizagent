@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agentic AI Quiz</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;600;700;800&display=swap">
+    <style>
+        :root {
+            --bg-color: #e0f2fe;
+            --glass-bg: rgba(255, 255, 255, 0.6);
+            --glass-border: rgba(255, 255, 255, 0.8);
+            --glass-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            --correct-bg: rgba(16, 185, 129, 0.2);
+            --correct-border: rgba(16, 185, 129, 0.8);
+            --wrong-bg: rgba(239, 68, 68, 0.2);
+            --wrong-border: rgba(239, 68, 68, 0.8);
+            --text-main: #0f172a;
+            --text-muted: #475569;
+            --accent: #0284c7;
+            --accent-hover: #0369a1;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html, body {
+            width: 100%;
+            overflow-x: hidden;
+        }
+
+        body {
+            font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #e0f2fe 0%, #ffffff 100%);
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            z-index: 0;
+            animation: float 10s infinite alternate ease-in-out;
+        }
+        .orb-1 { width: 350px; height: 350px; background: rgba(99, 102, 241, 0.4); top: -100px; left: -100px; }
+        .orb-2 { width: 400px; height: 400px; background: rgba(236, 72, 153, 0.3); bottom: -150px; right: -100px; animation-delay: -5s; }
+        .orb-3 { width: 250px; height: 250px; background: rgba(16, 185, 129, 0.2); top: 40%; left: 50%; transform: translateX(-50%); animation-duration: 15s; }
+
+        @keyframes float {
+            0% { transform: translateY(0px) scale(1); }
+            100% { transform: translateY(30px) scale(1.1); }
+        }
+
+        .container {
+            width: 90%;
+            max-width: 600px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 30px;
+            box-shadow: var(--glass-shadow);
+            position: relative;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.4s ease;
+        }
+
+        .screen { display: none; flex-direction: column; width: 100%; }
+        .screen.active { display: flex; }
+
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 1px solid var(--glass-border); }
+    h1 { font-size: 1.4rem; font-weight: 800; background: linear-gradient(to right, #0284c7, #4f46e5); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+        .progress-badge { background: rgba(0, 0, 0, 0.05); padding: 6px 14px; border-radius: 20px; font-size: 0.9rem; font-weight: 700; letter-spacing: 1px; border: 1px solid var(--glass-border); }
+        .timer-badge { background: rgba(239, 68, 68, 0.1); color: #b91c1c; padding: 6px 14px; border-radius: 20px; font-size: 1rem; font-weight: 800; border: 1px solid rgba(239, 68, 68, 0.4); transition: color 0.3s; }
+        
+        .question-text { font-size: 1.3rem; font-weight: 600; line-height: 1.5; margin-bottom: 25px; color: #0f172a; }
+        
+        .options-grid { display: flex; flex-direction: column; gap: 12px; }
+        
+        .option {
+            background: rgba(255, 255, 255, 0.5);
+            border: 1px solid var(--glass-border);
+            padding: 16px 20px;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            font-size: 1.05rem;
+            font-weight: 400;
+            display: flex;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .option-label {
+            background: rgba(0, 0, 0, 0.05);
+            width: 32px;
+            height: 32px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 10px;
+            margin-right: 15px;
+            font-weight: 700;
+            flex-shrink: 0;
+            transition: all 0.25s ease;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        .option span { z-index: 2; pointer-events: none; }
+        
+        .option:hover:not(.locked) { background: rgba(255, 255, 255, 0.9); transform: translateY(-2px); border-color: rgba(0, 0, 0, 0.2); }
+        .option.locked { cursor: not-allowed; opacity: 0.7; }
+        .option.selected { background: rgba(2, 132, 199, 0.15); border-color: rgba(2, 132, 199, 0.5); }
+        .option.selected .option-label { background: rgba(2, 132, 199, 0.5); color: #fff; }
+        .option.correct { background: var(--correct-bg); border-color: var(--correct-border); opacity: 1; }
+        .option.correct .option-label { background: var(--correct-border); color: #fff; }
+        .option.wrong { background: var(--wrong-bg); border-color: var(--wrong-border); opacity: 1; }
+        .option.wrong .option-label { background: var(--wrong-border); color: #fff; }
+
+        .feedback-box { margin-top: 20px; padding: 16px; border-radius: 14px; text-align: center; font-weight: 500; font-size: 1.1rem; display: none; }
+        .feedback-box.show { display: block; }
+        .feedback-correct { background: var(--correct-bg); border: 1px solid var(--correct-border); color: #064e3b; }
+        .feedback-wrong { background: var(--wrong-bg); border: 1px solid var(--wrong-border); color: #7f1d1d; }
+
+        .controls { display: flex; justify-content: flex-end; gap: 15px; margin-top: 25px; }
+        button { padding: 14px 24px; border-radius: 14px; font-size: 1rem; font-weight: 700; font-family: inherit; cursor: pointer; border: none; transition: all 0.3s ease; }
+        .btn-primary { background: var(--accent); color: white; box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4); width: 100%; }
+        .btn-primary:hover { background: var(--accent-hover); transform: translateY(-2px); }
+
+        @media (max-width: 600px) {
+            .container { width: 95%; padding: 20px 15px; border-radius: 20px; }
+            h1 { font-size: 1.25rem; }
+            .question-text { font-size: 1.1rem; margin-bottom: 15px; }
+            .option { padding: 12px 12px; font-size: 0.95rem; }
+            .option-label { width: 28px; height: 28px; margin-right: 10px; font-size: 0.9rem; }
+            .controls { flex-direction: column; }
+            button { padding: 12px 20px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+
+    <div class="container" id="main-container">
+        
+        <!-- Screen: Start / Login -->
+        <div id="screen-start" class="screen active" style="text-align: left;">
+            <h1 style="margin-bottom: 10px; font-size: 1.6rem;">Agentic AI Quiz — Team Login</h1>
+            <p style="margin-bottom: 18px; color: var(--text-muted);">Enter team details and role. Admins can start/stop the quiz and view results. Users can take the quiz only after admin starts it.</p>
+
+            <div style="display:flex;flex-direction:column;gap:12px;max-width:420px">
+                <div id="team-row">
+                    <label for="team-name" style="font-weight:700;display:block;margin-bottom:6px">Team Name</label>
+                    <input id="team-name" type="text" placeholder="e.g. Team Alpha" style="padding:10px;border-radius:10px;border:1px solid var(--glass-border);width:100%" />
+                </div>
+
+                <div id="leader-row">
+                    <label for="leader-name" style="font-weight:700;display:block;margin-bottom:6px">Team Leader</label>
+                    <input id="leader-name" type="text" placeholder="Leader full name" style="padding:10px;border-radius:10px;border:1px solid var(--glass-border);width:100%" />
+                </div>
+
+                <div>
+                    <label for="role-select" style="font-weight:700;display:block;margin-bottom:6px">Role</label>
+                    <select id="role-select" style="padding:10px;border-radius:10px;border:1px solid var(--glass-border);width:100%">
+                        <option value="user">User</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+
+                <div id="admin-password-row" style="display:none">
+                    <label for="admin-password" style="font-weight:700;display:block;margin-bottom:6px">Admin Password</label>
+                    <input id="admin-password" type="password" placeholder="Enter admin password" style="padding:10px;border-radius:10px;border:1px solid var(--glass-border);width:100%" />
+                </div>
+
+                <div style="display:flex;gap:12px">
+                    <button class="btn-primary" id="login-btn">Login & Continue</button>
+                    <button class="btn-primary" id="clear-login" style="background:#f1f5f9;color:#0f172a">Clear</button>
+                </div>
+            </div>
+        </div>
+
+    <!-- Screen: Quiz -->
+        <div id="screen-quiz" class="screen">
+            <div class="header">
+                <h1>Agentic AI Master</h1>
+                <div style="display: flex; gap: 10px;">
+                    <div class="timer-badge" id="timer-indicator">15s</div>
+                    <div class="progress-badge" id="progress-indicator">1 / 10</div>
+                </div>
+            </div>
+
+            <div class="question-text" id="question-text">Loading question...</div>
+            
+            <div class="options-grid" id="options-container">
+                <!-- Options injected via JS -->
+            </div>
+
+            <div class="feedback-box" id="feedback-message"></div>
+
+            <div class="controls" style="display: none;" id="next-btn-container">
+                <button class="btn-primary" id="next-btn">Next Question</button>
+            </div>
+        </div>
+
+        <!-- Screen: End -->
+        <div id="screen-end" class="screen" style="text-align: center;">
+            <h1 style="margin-bottom: 20px; font-size: 2rem;">Quiz Completed!</h1>
+            <div style="margin-bottom: 30px;">
+                <h2 style="color: var(--text-muted); font-size: 1.2rem; margin-bottom: 10px;">Your Score</h2>
+                <div style="font-size: 4rem; font-weight: 800; color: var(--accent);" id="final-score">0</div>
+                <p id="final-message" style="margin-top: 10px; font-weight: 600;"></p>
+            </div>
+            <button class="btn-primary" onclick="location.reload()">Play Again</button>
+        </div>
+
+        <!-- Admin Panel (hidden until admin logs in) -->
+        <div id="admin-panel" class="screen" style="display:none;margin-top:18px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                <div>
+                    <h2 style="font-size:1rem;margin:0">Admin Controls</h2>
+                    <div style="color:var(--text-muted);font-size:0.9rem">Start/stop quiz and view results</div>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center">
+                    <div style="font-weight:700;color:var(--text-muted)">Status: <span id="admin-status">Not started</span></div>
+                    <button class="btn-primary" id="admin-start" style="width:auto;padding:10px 14px">Start Quiz</button>
+                    <button id="admin-stop" style="width:auto;padding:10px 14px;background:#f1f5f9;color:#0f172a;border-radius:12px">Stop Quiz</button>
+                    <button id="admin-reset" style="width:auto;padding:10px 14px;background:#fee2e2;color:#7f1d1d;border-radius:12px">Reset Results</button>
+                </div>
+            </div>
+
+            <div>
+                <h3 style="margin-bottom:8px">Results</h3>
+                <div id="results-list" style="max-height:220px;overflow:auto;border-radius:12px;padding:8px;border:1px solid var(--glass-border);background:rgba(255,255,255,0.6)">No results yet</div>
+            </div>
+            <div style="margin-top:12px">
+                <h3 style="margin-bottom:8px">Per-question option counts</h3>
+                <div class="muted" style="font-size:13px;margin-bottom:6px">Select a question to view how many users chose each option.</div>
+                <select id="chart-question-select" style="padding:8px;border-radius:8px;border:1px solid var(--glass-border);width:100%;max-width:360px;margin-bottom:8px">
+                </select>
+                <div id="chart-area" style="width:100%;max-width:560px;height:220px;border-radius:10px;padding:12px;border:1px solid var(--glass-border);background:rgba(255,255,255,0.55)">
+                    <!-- SVG chart inserted here -->
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+    const quizData = [
+            { question: "Why do we use multiple agents instead of one single powerful agent?", options: ["To reduce API cost", "To increase specialization and modularity", "To avoid using tools", "Because CrewAI requires it"], answer: 1 },
+            { question: "What role do 'Tools' play in CrewAI?", options: ["They store memory", "They define agent personality", "They allow agents to interact with external systems", "They replace tasks"], answer: 2 },
+            { question: "Your multi-agent system is producing inconsistent outputs every time for the same input. What is the MOST likely cause?", options: ["The LLM is too slow", "Tasks do not have clearly defined expected outputs", "Too many agents are used", "The API key is invalid"], answer: 1 },
+            { question: "If one agent in a Crew fails or produces poor output, what is the BEST design approach?", options: ["Stop the entire system", "Retry the same agent blindly", "Add validation or a review agent in the pipeline", "Remove the agent permanently"], answer: 2 },
+            { question: "What is a major tradeoff of multi-agent systems?", options: ["Less flexibility", "Increased latency and cost", "Reduced accuracy", "No control over outputs"], answer: 1 },
+            { question: "Which situation demonstrates the highest level of autonomy in an AI agent?", options: ["AI asking permission before every click", "AI generating only text responses", "AI independently analyzing goals, selecting tools, and completing tasks", "AI storing files automatically"], answer: 2 },
+            { question: "Which scenario best represents Agentic AI?", options: ["A calculator solving arithmetic after manual input", "A chatbot replying with fixed pre-written answers only", "An AI assistant scheduling meetings, replying to emails, and updating calendars automatically", "A PDF reader highlighting text"], answer: 2 },
+            { question: "In the context of Agentic AI architectures, what is the primary purpose of a ReAct (Reasoning and Acting) prompt structure?", options: ["To force the model to output JSON only", "To interleave reasoning traces with task-specific actions and observations", "To pre-train the model on a specific set of tools", "To prevent the agent from hallucinating"], answer: 1 },
+            { question: "When designing a multi-agent system, which pattern is most appropriate for a workflow where tasks must be executed sequentially and the output of one agent is the direct input to the next?", options: ["Hierarchical / Managerial", "Independent / Parallel", "Sequential / Chain pattern", "Competitive / Adversarial"], answer: 2 },
+            { question: "In the context of advanced LLM-based autonomous agents, what is the primary function of a 'Reflexion' or self-reflection mechanism?", options: ["To cache previous responses and serve them instantly to reduce token cost", "To enable the agent to verbally critique its own past actions and reasoning traces to self-correct and improve future performance", "To dynamically compress the context window by offloading older memories to a vector database", "To force the model to mirror the user's prompt directly back to them for confirmation before execution"], answer: 1 }
+        ];
+
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let timeLeft = 15;
+        let timerInterval = null;
+        let currentSelectedOption = null;
+        let phase = 'question'; // 'question' or 'reveal'
+
+        const labels = ['A', 'B', 'C', 'D'];
+
+        // Elements
+        const screenStart = document.getElementById('screen-start');
+        const screenQuiz = document.getElementById('screen-quiz');
+        const screenEnd = document.getElementById('screen-end');
+        const questionTextEl = document.getElementById('question-text');
+        const optionsContainerEl = document.getElementById('options-container');
+        const progressIndicatorEl = document.getElementById('progress-indicator');
+        const timerIndicatorEl = document.getElementById('timer-indicator');
+        const feedbackMessageEl = document.getElementById('feedback-message');
+        const nextBtnContainer = document.getElementById('next-btn-container');
+        const finalScoreEl = document.getElementById('final-score');
+        const finalMessageEl = document.getElementById('final-message');
+
+        // Login / Admin elements
+        const loginBtn = document.getElementById('login-btn');
+        const clearLoginBtn = document.getElementById('clear-login');
+        const teamNameInput = document.getElementById('team-name');
+        const leaderNameInput = document.getElementById('leader-name');
+        const roleSelect = document.getElementById('role-select');
+        const adminPanel = document.getElementById('admin-panel');
+        const adminStatusEl = document.getElementById('admin-status');
+        const adminStartBtn = document.getElementById('admin-start');
+        const adminStopBtn = document.getElementById('admin-stop');
+        const adminResetBtn = document.getElementById('admin-reset');
+        const resultsListEl = document.getElementById('results-list');
+
+        // Local state
+        let loggedIn = false;
+        let role = 'user';
+        let team = '';
+        let leader = '';
+        const LS_RESULTS = 'quizagent_results_v1';
+        const LS_STATUS = 'quizagent_status_v1';
+    // Demo admin password (client-side only). For production, replace with real auth.
+    const DEMO_ADMIN_PASSWORD = 'letmein123';
+
+        function saveStatus(started){ localStorage.setItem(LS_STATUS, JSON.stringify({started: !!started})); }
+        function loadStatus(){ try{ const s = JSON.parse(localStorage.getItem(LS_STATUS)); return !!(s && s.started); }catch(e){ return false; } }
+        function loadResults(){ try{ return JSON.parse(localStorage.getItem(LS_RESULTS)) || []; }catch(e){ return []; } }
+        function saveResults(arr){ localStorage.setItem(LS_RESULTS, JSON.stringify(arr)); }
+        function addResult(rec){ const r = loadResults(); r.push(rec); saveResults(r); }
+
+        function renderResults(){ const rows = loadResults(); if(!rows.length){ resultsListEl.innerHTML = '<div style="color:var(--text-muted)">No results yet</div>'; return; }
+            let html = '<table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:6px">Team</th><th style="text-align:left;padding:6px">Leader</th><th style="text-align:left;padding:6px">Score</th><th style="text-align:left;padding:6px">Correct</th><th style="text-align:left;padding:6px">Time</th></tr></thead><tbody>';
+            rows.slice().reverse().forEach(r=>{ html += `<tr><td style="padding:6px">${escapeHtml(r.team)}</td><td style="padding:6px">${escapeHtml(r.leader)}</td><td style="padding:6px">${r.score}%</td><td style="padding:6px">${r.correct}/${quizData.length}</td><td style="padding:6px">${new Date(r.time).toLocaleString()}</td></tr>` });
+            html += '</tbody></table>'; resultsListEl.innerHTML = html; }
+
+        function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c])); }
+
+        function switchScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        // replace start-btn flow with login flow
+        // show/hide admin password input and hide team/leader fields when role changes
+        roleSelect.addEventListener('change', ()=>{
+            const r = roleSelect.value;
+            document.getElementById('admin-password-row').style.display = r === 'admin' ? 'block' : 'none';
+            document.getElementById('team-row').style.display = r === 'admin' ? 'none' : 'block';
+            document.getElementById('leader-row').style.display = r === 'admin' ? 'none' : 'block';
+        });
+
+        loginBtn.addEventListener('click', ()=>{
+            const r = roleSelect.value;
+            // Admin path: only password required
+            if(r === 'admin'){
+                const pw = document.getElementById('admin-password').value || '';
+                if(pw !== DEMO_ADMIN_PASSWORD){ alert('Incorrect admin password'); document.getElementById('admin-password').focus(); return; }
+                // set admin identity as 'Admin' placeholders
+                team = 'Admin Team'; leader = 'Administrator'; role = r; loggedIn = true;
+            } else {
+                // User path: require team & leader
+                const t = teamNameInput.value.trim(); const l = leaderNameInput.value.trim();
+                if(!t){ alert('Please enter team name'); teamNameInput.focus(); return; }
+                if(!l){ alert('Please enter the team leader name'); leaderNameInput.focus(); return; }
+                team = t; leader = l; role = r; loggedIn = true;
+            }
+            // show admin panel for admin
+            if(role === 'admin'){ adminPanel.style.display = 'block'; renderResults(); }
+            else adminPanel.style.display = 'none';
+
+            const started = loadStatus(); adminStatusEl.textContent = started ? 'Started' : 'Not started';
+
+            // If admin, show admin panel and quiz preview; if user and started, start quiz; else alert
+            if(role === 'admin'){
+                switchScreen('screen-quiz'); currentQuestionIndex = 0; score = 0; loadQuestion();
+            } else {
+                if(started){ switchScreen('screen-quiz'); currentQuestionIndex = 0; score = 0; loadQuestion(); }
+                else { alert('Quiz has not been started by admin yet. Please wait.'); }
+            }
+        });
+
+        clearLoginBtn.addEventListener('click', ()=>{ teamNameInput.value=''; leaderNameInput.value=''; roleSelect.value='user'; adminPanel.style.display='none'; renderResults(); });
+
+        // Admin controls
+        adminStartBtn.addEventListener('click', ()=>{ saveStatus(true); adminStatusEl.textContent='Started'; alert('Quiz started — users can now take the quiz.'); });
+        adminStopBtn.addEventListener('click', ()=>{ saveStatus(false); adminStatusEl.textContent='Not started'; alert('Quiz stopped — new submissions will be prevented.'); });
+        adminResetBtn.addEventListener('click', ()=>{ if(!confirm('Reset all saved results?')) return; localStorage.removeItem(LS_RESULTS); renderResults(); alert('Results cleared.'); });
+
+        // Chart utilities: populate question selector
+        const chartQuestionSelect = document.getElementById('chart-question-select');
+        function populateQuestionSelect(){ chartQuestionSelect.innerHTML = ''; quizData.forEach((q,idx)=>{ const opt = document.createElement('option'); opt.value = idx; opt.textContent = `${idx+1}. ${q.question.substring(0,60)}${q.question.length>60? '...' : ''}`; chartQuestionSelect.appendChild(opt); }); }
+
+        function computeCountsForQuestion(qIndex){ // returns [countA, countB, countC, countD]
+            const rows = loadResults(); const counts = [0,0,0,0];
+            rows.forEach(r=>{ if(r.answers && Array.isArray(r.answers) && typeof r.answers[qIndex] === 'number'){ const v = r.answers[qIndex]; if(v>=0 && v<4) counts[v]++; } });
+            return counts;
+        }
+
+        function renderChartForQuestion(qIndex){ const counts = computeCountsForQuestion(qIndex); const total = counts.reduce((a,b)=>a+b,0);
+            const labelsArr = ['A','B','C','D'];
+            const chartArea = document.getElementById('chart-area'); chartArea.innerHTML = '';
+            // build simple vertical list with bars
+            const maxCount = Math.max(...counts,1);
+            counts.forEach((c,i)=>{
+                const row = document.createElement('div'); row.style.display='flex'; row.style.alignItems='center'; row.style.gap='12px'; row.style.marginBottom='8px';
+                const lab = document.createElement('div'); lab.textContent = labelsArr[i]; lab.style.width='28px'; lab.style.fontWeight='700';
+                const barWrap = document.createElement('div'); barWrap.style.flex='1'; barWrap.style.background='rgba(0,0,0,0.04)'; barWrap.style.borderRadius='8px'; barWrap.style.height='26px'; barWrap.style.overflow='hidden';
+                const bar = document.createElement('div'); const pct = Math.round((c / maxCount) * 100);
+                bar.style.width = (maxCount>0? (c / maxCount * 100) : 0) + '%'; bar.style.height='100%'; bar.style.background = 'linear-gradient(90deg,#0284c7,#4f46e5)'; bar.style.borderRadius='8px'; bar.style.transition='width .3s';
+                barWrap.appendChild(bar);
+                const meta = document.createElement('div'); meta.style.width='80px'; meta.style.textAlign='right'; meta.style.fontWeight='600'; meta.textContent = `${c} (${ total>0? Math.round((c/total)*100) : 0 }%)`;
+                row.appendChild(lab); row.appendChild(barWrap); row.appendChild(meta); chartArea.appendChild(row);
+            });
+        }
+
+        chartQuestionSelect.addEventListener('change', ()=>{ renderChartForQuestion(parseInt(chartQuestionSelect.value,10) || 0); });
+
+        // update renderResults to keep chart updated
+        const origRenderResults = renderResults;
+        renderResults = function(){ origRenderResults(); if(document.getElementById('chart-question-select').children.length === 0) populateQuestionSelect(); renderChartForQuestion(parseInt(chartQuestionSelect.value,10) || 0); };
+
+        document.getElementById('next-btn').addEventListener('click', () => {
+            currentQuestionIndex++;
+            if (currentQuestionIndex >= quizData.length) {
+                endQuiz();
+            } else {
+                loadQuestion();
+            }
+        });
+
+        function loadQuestion() {
+            phase = 'question';
+            currentSelectedOption = null;
+            timeLeft = 15;
+            
+            const q = quizData[currentQuestionIndex];
+            questionTextEl.innerText = q.question;
+            progressIndicatorEl.innerText = `${currentQuestionIndex + 1} / ${quizData.length}`;
+            timerIndicatorEl.innerText = `${timeLeft}s`;
+            timerIndicatorEl.style.color = '#b91c1c';
+            
+            feedbackMessageEl.className = 'feedback-box';
+            feedbackMessageEl.innerText = '';
+            nextBtnContainer.style.display = 'none';
+            optionsContainerEl.innerHTML = '';
+
+            q.options.forEach((opt, idx) => {
+                const div = document.createElement('div');
+                div.className = 'option';
+                div.innerHTML = `<div class="option-label">${labels[idx]}</div> <span>${opt}</span>`;
+                div.onclick = () => selectOption(idx);
+                optionsContainerEl.appendChild(div);
+            });
+
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                if(phase !== 'question') return;
+                timeLeft--;
+                timerIndicatorEl.innerText = `${timeLeft}s`;
+                if(timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    revealAnswer();
+                }
+            }, 1000);
+        }
+
+        function selectOption(index) {
+            if (phase !== 'question' || currentSelectedOption !== null) return;
+            currentSelectedOption = index;
+            
+            const options = optionsContainerEl.children;
+            for(let i=0; i<options.length; i++) options[i].classList.remove('selected');
+            options[index].classList.add('selected');
+        }
+
+        function revealAnswer() {
+            phase = 'reveal';
+            clearInterval(timerInterval);
+            
+            const q = quizData[currentQuestionIndex];
+            const options = optionsContainerEl.children;
+
+            // Lock all options
+            for(let i=0; i<options.length; i++) {
+                options[i].classList.add('locked');
+                options[i].onclick = null;
+            }
+
+            // Score if correct
+            if (currentSelectedOption === q.answer) {
+                score += 100;
+            }
+
+            // Highlight Correct and Wrong
+            options[q.answer].classList.add('correct');
+            if (currentSelectedOption !== null && currentSelectedOption !== q.answer) {
+                options[currentSelectedOption].classList.add('wrong');
+            }
+
+            // Show feedback
+            feedbackMessageEl.classList.add('show');
+            if (currentSelectedOption === q.answer) {
+                feedbackMessageEl.classList.add('feedback-correct');
+                feedbackMessageEl.innerText = "Correct! Well done.";
+            } else if (currentSelectedOption === null) {
+                feedbackMessageEl.classList.add('feedback-wrong');
+                feedbackMessageEl.innerText = `Time's up! The correct answer is: ${q.options[q.answer]}`;
+            } else {
+                feedbackMessageEl.classList.add('feedback-wrong');
+                feedbackMessageEl.innerText = `Incorrect. The correct answer is: ${q.options[q.answer]}`;
+            }
+
+            nextBtnContainer.style.display = 'flex';
+        }
+
+        function endQuiz() {
+            switchScreen('screen-end');
+            finalScoreEl.innerText = score;
+            
+            const total = quizData.length * 100;
+            const ratio = score / total;
+
+            if(ratio === 1) finalMessageEl.innerText = "Perfect Score! You are an Agentic AI Master!";
+            else if(ratio >= 0.7) finalMessageEl.innerText = "Great job! You know your stuff.";
+            else if(ratio >= 0.5) finalMessageEl.innerText = "Good effort! Keep learning.";
+            else finalMessageEl.innerText = "Time to study up on Agentic AI!";
+
+            // Save result for non-admin users only
+            if(role !== 'admin'){
+                const correctCount = Math.round((score / 100)); // since each question adds 100
+                const pct = Math.round((correctCount / quizData.length) * 100);
+                try{
+                    addResult({team: team || 'Anonymous', leader: leader || 'Unknown', correct: correctCount, score: pct, time: Date.now()});
+                    renderResults();
+                }catch(e){ console.error('Could not save result', e); }
+            }
+        }
+    </script>
+</body>
+</html>
